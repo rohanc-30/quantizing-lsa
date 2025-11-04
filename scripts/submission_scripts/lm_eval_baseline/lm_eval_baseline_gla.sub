@@ -8,4 +8,9 @@ log = /home/rcherukuri/quantizing-lsa/logs/lm_eval_baseline/lm_eval_baseline.log
 request_memory = 64000
 request_cpus = 8
 request_gpus = 4
+
++RequiresWholeDevice = true
++GPUJob = true
+requirements = TARGET.CUDAGlobalMemoryMb > 60000
+
 queue

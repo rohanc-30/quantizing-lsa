@@ -8,6 +8,8 @@ log = /home/rcherukuri/quantizing-lsa/logs/export_gla/export_gla.log
 request_memory = 64000
 request_cpus = 8
 request_gpus = 4
++RequiresWholeDevice = true
++GPUJob = true
 requirements = TARGET.CUDAGlobalMemoryMb > 60000
 
 queue

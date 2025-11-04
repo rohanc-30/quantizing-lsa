@@ -24,7 +24,7 @@ import pickle
 from transformers import GPT2LMHeadModel, GPT2Config
 import fla
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from fla.models import GLAConfig
+from fla.models import GLAConfig, GLAforCausalLM
 
 # Build a class equivalent to hf's fla-hub/GLA
 class QuantizableGLAConfig(GLAConfig):

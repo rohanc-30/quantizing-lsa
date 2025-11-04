@@ -14,4 +14,4 @@ export HF_HUB_CACHE=/home/rcherukuri/hf/hub
 
 export HOME=/home/rcherukuri
 
-python scripts/export_gpt.py --save_dir $1
+python scripts/export_gla.py --save_dir $1

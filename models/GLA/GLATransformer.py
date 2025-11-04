@@ -31,7 +31,7 @@ class QuantizableGLAConfig(GLAConfig):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-class QuantizableGLAModel(GLAModel):
+class QuantizableGLAModel(GLAforCausalLM):
     config_class = QuantizableGLAConfig
     def __init__(self, config, **kwargs):
         super().__init__(config, **kwargs)

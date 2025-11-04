@@ -9,13 +9,13 @@ source /home/rcherukuri/quantizing-lsa/.venv/bin/activate
 
 nvcc --version
 
-uv run python - <<'PY'
+python - <<'PY'
 import torch
 print("CUDA available:", torch.cuda.is_available())
 print("Visible devices:", torch.cuda.device_count())
 PY
 
-uv run python -c "import torch; print(torch.version.cuda)"
+python -c "import torch; print(torch.version.cuda)"
 module list
 
 uv pip show triton

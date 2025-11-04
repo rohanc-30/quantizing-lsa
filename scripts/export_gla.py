@@ -33,17 +33,17 @@ if project_root not in sys.path:
 
 import importlib
 importlib.reload(importlib.import_module("models.GLA.GLATransformer"))
-from models.GLA.GLATransformer import QuantizableGPT2LMHeadModel, QuantizableGPT2Config
+from models.GLA.GLATransformer import QuantizableGLAModel, QuantizableGLAConfig
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--save_dir", default="checkpoints/gpt2_mod")
+    p.add_argument("--save_dir", default="checkpoints/gla_mod")
     args = p.parse_args()
 
-    cfg = QuantizableGPT2Config.from_pretrained("gpt2")
-    model = QuantizableGPT2LMHeadModel.from_pretrained("gpt2", config=cfg)
-    tok = AutoTokenizer.from_pretrained("gpt2")
+    cfg = QuantizableGLAConfig.from_pretrained("fla-hub/GLA-2.7B-100B")
+    model = QuantizableGLAModel.from_pretrained("fla-hub/GLA-2.7B-100B", config=cfg)
+    tok = AutoTokenizer.from_pretrained("fla-hub/GLA-2.7B-100B")
 
     pathlib.Path(args.save_dir).mkdir(parents=True, exist_ok=True)
     model.save_pretrained(args.save_dir)

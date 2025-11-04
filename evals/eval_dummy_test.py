@@ -38,6 +38,8 @@ if __name__ == "__main__":
     model = QuantizableGPT2LMHeadModel.from_pretrained("gpt2")
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
+    print(model)
+
     input_prompt = "This is a story all about how my life got flipped, turned upside down."
     input_ids = tokenizer(input_prompt, return_tensors="pt").input_ids
     outputs = model.generate(input_ids, max_length=128)

@@ -22,11 +22,19 @@ from transformers import AutoTokenizer
 from itertools import chain
 import pickle
 from transformers import GPT2LMHeadModel, GPT2Config
+import fla
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from fla.models import GLAConfig
 
 # Build a class equivalent to hf's fla-hub/GLA
-class GLATransformer(nn.Module):
-    pass
+class QuantizableGLAConfig(GLAConfig):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
+class QuantizableGLAModel(GLAModel):
+    config_class = QuantizableGLAConfig
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
 
 class QuantizableGPT2Config(GPT2Config):
     def __init__(self, **kwargs):

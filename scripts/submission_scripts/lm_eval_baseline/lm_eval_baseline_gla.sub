@@ -1,0 +1,11 @@
+executable = /home/rcherukuri/quantizing-lsa/scripts/submission_scripts/lm_eval_baseline/lm_eval_baseline.sh
+arguments = /home/rcherukuri/quantizing-lsa/checkpoints/gpt2_mod /home/rcherukuri/quantizing-lsa/outs/lm_eval_baseline/gpt2_mod_eval.json
+initialdir = /home/rcherukuri/quantizing-lsa
+error = /home/rcherukuri/quantizing-lsa/logs/lm_eval_baseline/lm_eval_baseline.err
+output = /home/rcherukuri/quantizing-lsa/logs/lm_eval_baseline/lm_eval_baseline.out
+log = /home/rcherukuri/quantizing-lsa/logs/lm_eval_baseline/lm_eval_baseline.log
+
+request_memory = 64000
+request_cpus = 8
+request_gpus = 4
+queue

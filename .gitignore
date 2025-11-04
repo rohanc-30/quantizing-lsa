@@ -1,0 +1,34 @@
+# --- Python cache / build ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+*.pyo
+*.pyd
+build/
+dist/
+
+# --- Virtual environments & package managers ---
+.venv/
+.env/
+uv.lock    # optional: keep it if you want deterministic builds
+venv/
+.envrc
+
+# --- Checkpoints / logs / outputs ---
+checkpoints/
+logs/
+outs/
+results/
+
+# --- Editor / OS junk ---
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# --- Cluster / submission artifacts ---
+*.out
+*.err
+*.log
+outputs/

@@ -1,0 +1,11 @@
+executable = /home/rcherukuri/quantizing-lsa/scripts/submission_scripts/export_gpt/export_gpt.sh
+arguments = /home/rcherukuri/quantizing-lsa/checkpoints/gpt2_mod
+initialdir = /home/rcherukuri/quantizing-lsa
+error = /home/rcherukuri/quantizing-lsa/logs/export_gpt/export_gpt.err
+output = /home/rcherukuri/quantizing-lsa/logs/export_gpt/export_gpt.out
+log = /home/rcherukuri/quantizing-lsa/logs/export_gpt/export_gpt.log
+
+request_memory = 64000
+request_cpus = 8
+request_gpus = 4
+queue

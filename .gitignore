@@ -20,6 +20,7 @@ checkpoints/
 logs/
 outs/
 results/
+temp/
 
 # --- Editor / OS junk ---
 .DS_Store

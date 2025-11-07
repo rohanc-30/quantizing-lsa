@@ -1,0 +1,15 @@
+executable = /home/rcherukuri/quantizing-lsa/scripts/submission_scripts/quant_observers/quant_obs_gla.sh
+arguments = /home/rcherukuri/quantizing-lsa/checkpoints/gla_mod /home/rcherukuri/quantizing-lsa/checkpoints/gla_mod_int8_fbgemm /home/rcherukuri/quantizing-lsa/outs/out_gla_mod/activation_histos_gla_mod.npz /home/rcherukuri/quantizing-lsa/outs/out_gla_mod/histo_pngs
+initialdir = /home/rcherukuri/quantizing-lsa
+error = /home/rcherukuri/quantizing-lsa/logs/quant_observers/quant_obs_gla.err
+output = /home/rcherukuri/quantizing-lsa/logs/quant_observers/quant_obs_gla.out
+log = /home/rcherukuri/quantizing-lsa/logs/quant_observers/quant_obs_gla.log
+
+request_memory = 64000
+request_cpus = 8
+request_gpus = 4
++RequiresWholeDevice = true
++GPUJob = true
+requirements = TARGET.CUDAGlobalMemoryMb > 60000
+
+queue

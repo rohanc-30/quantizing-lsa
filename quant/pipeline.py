@@ -75,7 +75,7 @@ def save_histograms_npz(records, path: str):
     npz_payload = {}
     for i, r in enumerate(records):
         p = f"r{i}"
-        npz_payload[f"{p}_module"] = np.string_(r["module"])
+        npz_payload[f"{p}_module"] = np.bytes_(r["module"])
         npz_payload[f"{p}_bins"] = np.int32(r["bins"])
         npz_payload[f"{p}_counts"] = r["counts"].astype(np.int64)
         npz_payload[f"{p}_edges"] = r["edges"].astype(np.float64)

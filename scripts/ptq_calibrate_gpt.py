@@ -37,17 +37,44 @@ def iter_lmeval_batches(tokenizer, task_names=("wikitext", "lambada"),
         else:
             actual_task = task
             
+        # Try to get docs from the appropriate split
+        docs = None
         if split == "validation" and hasattr(actual_task, "validation_docs"):
-            docs = actual_task.validation_docs()
-        else:
-            docs = actual_task.test_docs()
+            try:
+                docs = actual_task.validation_docs()
+            except Exception as e:
+                print(f"Warning: Failed to get validation_docs for {task_name}: {e}")
+        elif hasattr(actual_task, "test_docs"):
+            try:
+                docs = actual_task.test_docs()
+            except Exception as e:
+                print(f"Warning: Failed to get test_docs for {task_name}: {e}")
+        
+        # Handle case where docs is None (task has no data or data not loaded)
+        if docs is None:
+            print(f"Warning: {task_name} has no {split} docs available, skipping...")
+            continue
+            
         for doc in docs:
             text = actual_task.doc_to_text(doc)
             if not text:
                 continue
             enc = tokenizer(text, return_tensors="pt", truncation=True, max_length=seq_len)
+            # Ensure ids is 1D for pad_sequence
             ids = enc["input_ids"].squeeze(0)
-            mask = enc.get("attention_mask", torch.ones_like(ids))
+            if ids.dim() == 0:
+                ids = ids.unsqueeze(0)  # Handle edge case of single token
+            # Get or create attention mask, ensure it's 1D
+            mask = enc.get("attention_mask", None)
+            if mask is None:
+                mask = torch.ones_like(ids)
+            else:
+                mask = mask.squeeze(0)  # Ensure 1D
+            if mask.dim() == 0:
+                mask = mask.unsqueeze(0)  # Handle edge case of single token
+            # Verify ids and mask have same length
+            if ids.shape[0] != mask.shape[0]:
+                mask = torch.ones_like(ids)  # Fallback: create matching mask
             buf_ids.append(ids); buf_masks.append(mask)
             if len(buf_ids) == batch_size:
                 yield {
@@ -103,8 +130,8 @@ def main():
         os.makedirs(os.path.dirname(args.histo_out), exist_ok=True)
 
     # 1) Load tokenizer + FP32 model
-    tok = AutoTokenizer.from_pretrained(args.ckpt_in)
-    base_model = AutoModelForCausalLM.from_pretrained(args.ckpt_in).eval().to(args.device)
+    tok = AutoTokenizer.from_pretrained(args.ckpt_in, trust_remote_code=True)
+    base_model = AutoModelForCausalLM.from_pretrained(args.ckpt_in, trust_remote_code=True).eval().to(args.device)
 
     print(torch.__version__)
 

@@ -14,6 +14,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from quant.mapping_gpt2 import build_qmap_for_gpt2
+from quant.mapping_gla import build_qmap_for_gla
 from quant.pipeline import (
     prepare_model,
     calibrate,
@@ -22,6 +23,8 @@ from quant.pipeline import (
     save_histograms_png,
     convert_to_int8,
 )
+from models.GLA.GLATransformer import QuantizableGLAModel, QuantizableGLAConfig
+import json
 
 def iter_lmeval_batches(tokenizer, task_names=("wikitext", "lambada"),
                         split="validation", max_docs=2000, batch_size=8, seq_len=512):
@@ -133,7 +136,21 @@ def main():
 
     # 1) Load tokenizer + FP32 model
     tok = AutoTokenizer.from_pretrained(args.ckpt_in, trust_remote_code=True)
-    base_model = AutoModelForCausalLM.from_pretrained(args.ckpt_in, trust_remote_code=True).eval().to(args.device)
+
+    # Detect model type from config
+    config_path = os.path.join(args.ckpt_in, "config.json")
+    with open(config_path, 'r') as f:
+        config_dict = json.load(f)
+    model_type = config_dict.get("model_type", "gpt2")
+
+    # Load appropriate model class
+    if model_type == "gla":
+        print(f"Detected GLA model, using QuantizableGLAModel")
+        config = QuantizableGLAConfig.from_pretrained(args.ckpt_in)
+        base_model = QuantizableGLAModel.from_pretrained(args.ckpt_in, config=config).eval().to(args.device)
+    else:
+        print(f"Detected {model_type} model, using AutoModelForCausalLM")
+        base_model = AutoModelForCausalLM.from_pretrained(args.ckpt_in, trust_remote_code=True).eval().to(args.device)
 
     print(torch.__version__)
 
@@ -153,7 +170,10 @@ def main():
     fp32 = base_model
 
     # 2) Build mapping (what to observe/quantize)
-    qmap = build_qmap_for_gpt2()
+    if model_type == "gla":
+        qmap = build_qmap_for_gla()
+    else:
+        qmap = build_qmap_for_gpt2()
 
     # 3) Prepare (insert observers). Example inputs just need correct shapes/dtypes.
     seq = 16

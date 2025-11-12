@@ -27,8 +27,20 @@ which basename
 which nvidia-smi
 which triton
 
+# Detect if this is an INT8 checkpoint by checking for pytorch_model_int8.bin
+# INT8 models run on CPU (FBGEMM), so CUDA initialization is optional
+IS_INT8_CHECKPOINT=false
+if [ -f "$1/pytorch_model_int8.bin" ]; then
+    echo "Detected INT8 quantized checkpoint - CUDA initialization optional"
+    IS_INT8_CHECKPOINT=true
+else
+    echo "Standard checkpoint detected - CUDA initialization required"
+fi
+
 # Ensure CUDA is visible and initialized before any fla imports
 # This is critical because fla detects the backend at import time
+# For INT8 checkpoints, this is optional since models run on CPU
+if [ "$IS_INT8_CHECKPOINT" = "false" ]; then
 python - <<'EOF'
 import torch
 import os
@@ -49,8 +61,17 @@ if torch.cuda.is_available():
 else:
     print("WARNING: CUDA is not available!")
 EOF
+else
+    echo "Skipping CUDA initialization for INT8 checkpoint (runs on CPU)"
+    python - <<'EOF'
+import torch
+print("CUDA available:", torch.cuda.is_available())
+print("Skipping CUDA initialization - INT8 model runs on CPU")
+EOF
+fi
 
-# Now check fla backend detection
+# Now check fla backend detection (optional for INT8)
+if [ "$IS_INT8_CHECKPOINT" = "false" ]; then
 python - <<'EOF'
 import torch
 # Import triton first to ensure it initializes with CUDA context
@@ -67,7 +88,14 @@ print("fla.utils.custom_device_ctx:")
 import inspect
 print(inspect.getsource(fla.utils.custom_device_ctx))
 EOF
+else
+    echo "Skipping fla backend check for INT8 checkpoint"
+    python - <<'EOF'
+print("Skipping fla backend check - INT8 model runs on CPU")
+EOF
+fi
 
+if [ "$IS_INT8_CHECKPOINT" = "false" ]; then
 python - <<'PY'
 import torch, triton, os
 print("Torch CUDA available:", torch.cuda.is_available())
@@ -90,11 +118,30 @@ try:
 except Exception as e:
     print(f"Warning: Could not verify Triton CUDA setup: {e}")
 PY
+else
+    echo "Skipping Triton CUDA check for INT8 checkpoint"
+fi
+
+# Select the appropriate wrapper script
+if [ "$IS_INT8_CHECKPOINT" = "true" ]; then
+    echo "Using INT8 wrapper for quantized checkpoint"
+    WRAPPER_SCRIPT="/home/rcherukuri/quantizing-lsa/scripts/submission_scripts/lm_eval_baseline/lm_eval_wrapper_int8.py"
+else
+    echo "Using standard wrapper for regular checkpoint"
+    WRAPPER_SCRIPT="/home/rcherukuri/quantizing-lsa/scripts/submission_scripts/lm_eval_baseline/lm_eval_wrapper.py"
+fi
 
 # Use wrapper script to ensure CUDA is initialized before fla imports
-python /home/rcherukuri/quantizing-lsa/scripts/submission_scripts/lm_eval_baseline/lm_eval_wrapper.py \
+# For INT8 checkpoints, force CPU device since quantized ops only work on CPU
+if [ "$IS_INT8_CHECKPOINT" = "true" ]; then
+    MODEL_ARGS="pretrained=$1,tokenizer=$1,dtype=float32,trust_remote_code=True,device_map=cpu"
+else
+    MODEL_ARGS="pretrained=$1,tokenizer=$1,dtype=float32,trust_remote_code=True"
+fi
+
+python "$WRAPPER_SCRIPT" \
   --model hf \
-  --model_args "pretrained=$1,tokenizer=$1,dtype=float32,trust_remote_code=True" \
+  --model_args "$MODEL_ARGS" \
   --tasks wikitext,piqa,lambada_openai \
   --batch_size 8 \
   --limit 500 \

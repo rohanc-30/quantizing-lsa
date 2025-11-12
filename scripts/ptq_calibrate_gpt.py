@@ -1,10 +1,12 @@
 import os
 import argparse
 import sys
+import shutil
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from lm_eval.tasks import get_task_dict
+from pathlib import Path
 
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -163,11 +165,26 @@ def main():
     prepared = prepare_model(wrapped_model, qmap, (ex_ids,)).to(args.device).eval()
 
     # 4) Calibrate via short lm-eval subset
+    print(f"[Calibration] Starting calibration with {args.max_docs} docs...")
     calib_iter = iter_lmeval_batches(
         tok, task_names=tuple(args.tasks), split=args.split,
         max_docs=args.max_docs, batch_size=args.batch_size, seq_len=args.seq_len
     )
     calibrate(prepared, calib_iter, device=args.device)
+    
+    # Verify calibration: count how many observers have been run
+    observer_count = 0
+    calibrated_count = 0
+    for name, mod in prepared.named_modules():
+        if hasattr(mod, "activation_post_process"):
+            observer_count += 1
+            obs = mod.activation_post_process
+            # Check if observer has been run (has min_val/max_val or histogram)
+            if hasattr(obs, "min_val") and obs.min_val is not None:
+                calibrated_count += 1
+            elif hasattr(obs, "histogram") and obs.histogram is not None and obs.histogram.numel() > 0:
+                calibrated_count += 1
+    print(f"[Calibration] Found {observer_count} observers, {calibrated_count} were calibrated")
 
     # 5) (Optional) Save activation histograms BEFORE convert (observers are removed by convert)
     if args.histo_out:
@@ -176,12 +193,52 @@ def main():
         save_histograms_png(histos, args.histo_out_pngs)
         print(f"[info] saved {len(histos)} activation histograms → {args.histo_out}")
 
-    # 6) Convert to INT8 and save weights
+    # 6) Convert to INT8 and save the FULL model (not just state_dict)
+    # This allows direct loading without reconstruction
     int8_model = convert_to_int8(prepared)
+    
+    # Unwrap from PTQWrapper if needed (the wrapper adds 'model.' prefix)
+    if hasattr(int8_model, 'model'):
+        int8_model = int8_model.model
+    
+    # Save the full quantized model
+    torch.save(int8_model, os.path.join(args.ckpt_out, "pytorch_model_int8_full.pt"))
+    # Also save state_dict for compatibility
     torch.save(int8_model.state_dict(), os.path.join(args.ckpt_out, "pytorch_model_int8.bin"))
+    
     # Save tokenizer alongside for convenience
     tok.save_pretrained(args.ckpt_out)
+    
+    # 7) Copy necessary files from input checkpoint to make it a valid HF checkpoint
+    # This includes config.json, modeling files, etc.
+    ckpt_in_path = Path(args.ckpt_in)
+    ckpt_out_path = Path(args.ckpt_out)
+    
+    # Files to copy that are needed for loading the model
+    files_to_copy = [
+        "config.json",
+        "generation_config.json",
+        "modeling_gla.py",  # GLA-specific
+        "configuration_gla.py",  # GLA-specific
+        # "modeling_gpt2.py",  # GPT2-specific (if exists)
+        #"configuration_gpt2.py",  # GPT2-specific (if exists)
+    ]
+    
+    for file_name in files_to_copy:
+        src_file = ckpt_in_path / file_name
+        if src_file.exists():
+            dst_file = ckpt_out_path / file_name
+            shutil.copy2(src_file, dst_file)
+            print(f"[info] Copied {file_name} to output checkpoint")
+    
+    # Also copy any Python files that might be needed (modeling, configuration)
+    for py_file in ckpt_in_path.glob("*.py"):
+        if py_file.name not in [f.name for f in ckpt_out_path.glob("*.py")]:
+            shutil.copy2(py_file, ckpt_out_path / py_file.name)
+            print(f"[info] Copied {py_file.name} to output checkpoint")
+    
     print(f"[done] INT8 state_dict saved → {args.ckpt_out}/pytorch_model_int8.bin")
+    print(f"[done] Checkpoint files copied to make {args.ckpt_out} a valid HF checkpoint")
 
 if __name__ == "__main__":
     main()

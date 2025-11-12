@@ -9,11 +9,25 @@ try:
     
     def prepare_fx_compat(model: torch.nn.Module, qconfig_mapping, example_inputs):
         """Use non-FX quantization for complex models"""
+        import torch.nn as nn
+        from torch.ao.quantization import propagate_qconfig_, float_qparams_weight_only_qconfig
+        
         model.eval()
         # Convert QConfigMapping to dict for propagate_qconfig_
-        from torch.ao.quantization import propagate_qconfig_
         qconfig_dict = qconfig_mapping.to_dict()
         propagate_qconfig_(model, qconfig_dict)
+        
+        # Manually set qconfig on embedding modules to ensure they use float_qparams_weight_only_qconfig
+        # This is needed because propagate_qconfig_ might not properly handle object_type mappings
+        # If an embedding module has a qconfig set (meaning it's being quantized), we need to ensure
+        # it uses the correct float_qparams_weight_only_qconfig, as required by PyTorch
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Embedding):
+                # If the module has a qconfig (is being quantized), ensure it's the correct one
+                if hasattr(module, 'qconfig') and module.qconfig is not None:
+                    # PyTorch requires float_qparams_weight_only_qconfig for embedding quantization
+                    module.qconfig = float_qparams_weight_only_qconfig
+        
         # Prepare the model (this doesn't use FX)
         prepared = prepare(model)
         return prepared
